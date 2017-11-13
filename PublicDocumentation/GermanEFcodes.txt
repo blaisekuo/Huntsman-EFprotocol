@@ -1,0 +1,191 @@
+SPI 8 Bit MSB first
+83kHz oder 500KHz
+Abstand zwischen Bytes 0,3ms bez. 0,1ms nach Rückkehr aus Clk= 0 PullDown des LCLK= Busy Signal des Objektivs. 
+	Das Objektiv zieht nach jedem Byte das Clk Signal auf 0 bis es wieder Empfangsbereit ist.
+___________________________________________________________________________________________________________________________
+
+Allgemein gilt laut Canon Manual 1:1,4 50mm:
+-	Jedes Kamerakommando besteht aus einem vorderen und hinteren 4-bit Befehl:
+-	-	Wenn im Halbbyte Bit3= 1 gesetzt ist (1xxx) dann werden weitere Bytes vom Objektiv erwartet, 
+		Anzahl der Bytes abhängig vom Befehl in den lower 3 Bit _xxx
+-	Vorderes Halbyte: 
+-	-	"Transmit" Sendekommando ans Objektiv, Kamera erwartet Daten   oder
+-	-	"Receive" Empfangskommando an das Objektiv, Kamera sendet weitere Daten
+-	Hinteres Halbyte gilt in Kombination mit dem vorderen: 
+-	-	Fahrkommando an Objektiv,kann auch ohne weitere Daten als unmittelbare Anweisung verwendet werden 
+		(Reset, Stop, Fahre zu Fixposition)
+-	Gefolgt von 0xYY wenn kommandiert wird, Anzahl nach Bedarf, abhängig vom Kommando
+-	Gefolgt von 0x00 wenn gelesen wird, Anzahl nach Bedarf, abhängig vom Kommando
+-	Beide Befehlsteile zusammen ergeben einen Gesamtbefehl
+
+-	Zu Beginn wird die Integrität des Taktsignals geprüfet und
+	bei ungenügender Protokollübreinstimmung oder Taktqualität sendet das Objektiv 0 auf LCLK und DLC, 
+	stoppt dadurch die Kommunikation und erzeugt eine Fehlermeldung auf der Kamera.
+-	Für die Blende soll es ein Stromlos-Kommando geben (noch nicht identifiziert), 
+	das Fehlen hat bei einem Projekt (Vladimir Rodionov)zum Verlust mehrerer Schrittmotoren geführt.
+-	Es muss noch ein Command geben, das die interne LCLK des Objektiv stoppt bis es wieder angesprochen wird.
+-	Umschalten des AF/M Schalters startet einen Kommunikationszyklus mit der Kamera, getriggert vom Objektiv
+-	Beim Antippen des Auslösers die Kamera schaltet Power on, beginnt Kommunikation mit dem Objektiv und fragt nach:
+	Zoom-, soft-, best-focus Korrekturwerte, Fokus- und Blendenposition.
+	Dann sendet die Kamera Kommandos nach Bedarf
+-	Die Fokusdrive Kommandos können inkrementell oder für absolute Positionen sein.
+-	Während des Fahrens der Blende sendet das Objektiv 0 auf LCLK, empfängt also keine weiteren Befehle.
+-	-	Irgendwann nachdem das Busy weg ist sendet die Kamera ein Blende-Stop Signal, dass en Steppermotor stromlos schaltet. 
+		Hier liegt ein Risiko den Motor zu zerstören.
+
+_____________________________________________________________________________________________________	
+Befehle					Reply				|	- Bedeutung
+von    					Reply				|	- Es Folgt darauf
+der    					Reply				|	- Antwort der Linse
+Kamera 					reply				|
+-----------------------------------------------
+	 i (ignore, steht für irrelevanten Kommandoteil)
+		|				R:ead  ii (i= ignore) ist ggf. die Antwort des letzten Befehls, yy Berechneter Wert...
+	   
+0	0x00	iiii 0000	R:	ii						Null Byte Dummy
+
+5	0xi5	iiii 0101	R:	ii						Fahre Fokus in den Nahbereich 
+				 0100								0x4 = Fahre Fokusmotor plus 
+				 0001								0x1	= Nahgrenze
+													Kann auch zusammen mit zweitem Kommando im ersten Halbbyte auftreten:
+21	0x15	0001 0101								Wahrscheinlich Kombination mit Befehl 0x1i (empfange Blende) möglich ??
+37	0x25	0010 0101								Wahrscheinlich Kombination mit Befehl 0x2i möglich  ??
+
+6	0xi6	iiii 0110	R:	ii						Fahre Fokus nach unendlich ergibt sich aus:
+				 0100								0x4 = Fahre Fokusmotor plus 
+				 0010								0x2 = Unendlich
+22	0x16	0001 0110	R: ??						Wahrscheinlich Kombination mit Befehl 0x1i (empfange Blende) möglich  ??
+38	0x26	0010 0110	R: ??						Wahrscheinlich Kombination mit Befehl 0x2i möglich  ??
+
+7	0xi7	iiii 0111	R:	ii						Init oder Reset?
+	
+10	0xiA	iiii 1010	R:	ii			 			Suchruf, testet ggf.die Übertragungsrate
+	0x00	0000 0000	R:	170	0xAA	1010 1010	Antwort: Bin da = 10101010.
+		
+12	0xiC	iiii 1100	R:	ii						???
+	0x00	0000 0000	R:	12	0x0C	0000 1100	
+		
+14	0xiE	iiii 1110	R:	ii	 					Init oder Reset? Es sollte noch ein Datenbyte folgen, da Bit3=1 ??
+		
+15	0xiF	iiii 1111	R:	ii						Bit 3 =1 bedeutet es folgt ein Datenbyte, hier die 0x0F, vom Objektiv???
+	0x00	0000 0000	R:	15	0x0F	00001111
+	
+(18 												Setze Blende für Analog	Kameras  --	Veraltet
+	xx												Gefolgt von: 	Blendenwerttwort:		18 18
+)
+19	0x13	0001 0011	R:	ii				    	Setze Blende Digital (Kommando ist eigentlich 0001 001i) letztes Bit ignored,
+			0001					http://www.chip.de/artikel/Ultimaker-Ultimaker_2-3D-Drucker-Test_66629785.html,				0x1 = Empfange Blendenzahl 
+				 001i								0x2 = Fahre Blendenmotor
+	0xyy	yyyy yyyy	R:	19	0x13	0001 0011	gefolgt von Blendenwert  gemäß Formel IL= 16/ln(2)*ln(x)+8, x=Blendenzahl
+	0x00??	0000 0000	R:	19	0x13	0001 0011	Objektiv quittiert mit Wiederholung des Kommandos (18 wird auch akzeptiert)
+
+68	0x44	0100 0100	R:	xx						Focus Motor Ansteuern
+			0100									0x4 = Empfange Fokusmotorsteps 
+				 0100								0x4 = Fahre Fokusmotor
+	0xyy	yyyy yyyy	R:	??						MSB Schritte Zweierkomplement?
+	0xzz	zzzz zzzz	R:	??						LSB Schritte
+	0x00	0000 0000	R:	??						??
+
+80	0x50	0101 0000	R:	xx						Setze AF Speed? Befehl unvollständig
+
+Alle Befehle > 127 (Bit7=1) gehören zur Kategorie "Transmit" = Fordere Info von Objektiv
+128	0x80	1000 0000	R:	xx					 	Doppelbefehl: Sende Objektivdaten
+			1000									0x8 = 0x8+0x0 = Sende Objektivdaten, 5 Byte Std. Eigenschaften 
+				 0000								0x0 = NO Command
+10	0x0A	0000 1010	R:	ID						0xA "Hallo", Lese Kamera ID, nicht klar wozu das Command Byte dient (0x0A)
+	0x00	0000 0000	R:	FminH					Lese MSB Min Brennweite 
+	0x00	0000 0000	R:	FminL					Lese LSB Min Brennweite
+	0x00	0000 0000	R:	FmaxH					Lese MSB Max Brennweite
+	0x00	0000 0000	R:	FmaxL					Lese LSB Max Brennweite
+	0x00	0000 0000	R:	PP						Lese Protokollversion (häufig Version 4)
+						
+144	0x90	1001 0000	R:	xx						Globaler Status
+			1001									0x9= 0x8+0x1 = Sende Objektivstatus, 3 Byte aktueller Status
+				 0000								0x0 = NO Command
+	0x00	0000 0000	R:	??						Lese ??
+	0x00	0000 0000	R:	0, 1					Lese AF, MF ?
+	0x00	0000 0000	R:	??						Lese ??
+						0?
+												
+176	0x00	0000 0000	R:	??			Fordert Blendenwerte an
+	0x00	0000 0000	R:	??			Gefolgt von:	0 0 (0)
+	0x00	0000 0000	R:	??			Antwort:		wahre Offenblende 
+	0x00	0000 0000	R:	??							Angezeigte Blende
+						Minimale Blende
+
+178	0x00	0000 0000	R:	??			?
+						
+160	0x00	0000 0000	R:	??			Aktuelle Brenweite
+	0x00	0000 0000	R:	??			Gefolgt von:	0 (0)
+	0x00	0000 0000	R:	??			Antwort:		MSB Brennweite
+						LSB Brennweite
+						
+
+
+194	0x00	0000 0000	R:	??			Entfernung zum Objekt laut Fokus im cm für USM min EF Version 4
+	0x00	0000 0000	R:	??			gefolgt von:		0 0 0 (0)						
+	0x00	0000 0000	R:	??			Antwort: 		MSB Min Entfernung?
+	0x00	0000 0000	R:	??							LSB Min Entfernung?
+	0x00	0000 0000	R:	??							MSB Max Entfernung?
+						LSB Max Entfernung? 		
+
+196	0x00	0000 0000	R:	??			Entfernung zum Objekt laut Fokus (Zwischen welchen werten)
+	0x00	0000 0000	R:	??			gefolgt von:		0 0 0 (0)						
+	0x00	0000 0000	R:	??			Antwort: 		MSB Min Entfernung
+	0x00	0000 0000	R:	??							LSB Min Entfernung
+	0x00	0000 0000	R:	??							MSB Max Entfernung
+						LSB Max Entfernung 	
+
+224	0x00	0000 0000	R:	??			AF-Justage Wert Korrektur zu 228
+	0x00	0000 0000	R:	??			gefolgt von:	0 (0) 
+	0x00	0000 0000	R:	??			Antwort:		MSB AF-Justage Wert
+						LSB AF-Justage Wert
+						
+228	0x00	0000 0000	R:	??			Lens extension response factor (Motorschritte in Linsenbewegung)
+	0x00	0000 0000	R:	??			gefolgt von:	0 0 
+	0x00	0000 0000	R:	??			Antwort:		37
+						231
+													
+232	0x00	0000 0000	R:	??			Lens Extension Correction Value (Unendlich)
+	0x00	0000 0000	R:	??			Gefolgt von: 	0 0 0 0 0 (0)
+	0x00	0000 0000	R:	??			Antwort:		Wert
+	0x00	0000 0000	R:	??							Wert
+	0x00	0000 0000	R:	??							Wert
+	0x00	0000 0000	R:	??							Wert
+	0x00	0000 0000	R:	??							Wert
+						Wert
+					
+234	0x00	0000 0000	R:	??			Lens Extension Correction Value (Nahbereich)
+	0x00	0000 0000	R:	??			Gefolgt von: 	0 0 0 0 0 (0)
+	0x00	0000 0000	R:	??			Antwort:		Wert
+	0x00	0000 0000	R:	??							Wert
+	0x00	0000 0000	R:	??							Wert
+	0x00	0000 0000	R:	??							Wert
+	0x00	0000 0000	R:	??							Wert
+						Wert
+						
+248	0x00	0000 0000	R:	??			Af Justage wert für Blende5.6						
+	0x00	0000 0000	R:	??			Gefolgt von: 	(0)
+		Antwort:		Af Wewrt
+		
+250	0x00	0000 0000	R:	??			Af Justage wert für Blende 2.8
+	0x00	0000 0000	R:	??			Gefolgt von: 	(0)
+		Antwort:		Af Wewrt
+		
+252	0x00	0000 0000	R:	??			Af Justage wert für Blende ?
+	0x00	0000 0000	R:	??			Gefolgt von: 	(0)
+		Antwort:		Af Wewrt
+		
+254	0x00	0000 0000	R:	??			Af Justage wert für Blende ?
+	0x00	0000 0000	R:	??			Gefolgt von: 	(0)
+		Antwort:		Af Wewrt
+						
+						
+
+Legende:
+
+(0) 		Es kann eine 0 kommen oder ein anderer Befehl
+23 56 78 98 Es kommen die Daten nacheinander
+0 0 0 0  	Es kommen 0 Werte Nacheinander
+?			Unbekannt oder nicht sicher
+23,24		Es kann eine dieser Werte kommen

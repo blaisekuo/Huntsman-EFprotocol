@@ -1,0 +1,43 @@
+SBIG products
+
+http://diffractionlimited.com/product/stf-8300/
+
+Arduino Discussion of EF focus hack
+
+http://forum.arduino.cc/index.php?topic=107199.0
+
+Magic Lantern notes
+
+https://www.magiclantern.fm/forum/index.php?topic=3796.0
+
+Huntsman Telephoto Array
+
+http://www.mq.edu.au/research/research-centres-groups-and-facilities/secure-planet/centres/research-centre-for-astronomy-astrophysics-and-astrophotonics/our-projects/phd-projects
+
+EF mount revere engineering
+
+https://pickandplace.wordpress.com/2011/10/05/canon-ef-s-protocol-and-electronic-follow-focus/
+
+
+German Threads on EF signals
+
+http://www.dslr-forum.de/showpost.php?p=12221153&postcount=554
+
+http://www.dslr-forum.de/showthread.php?t=649529&page=12
+
+Cheap chinese EF extender
+
+http://www.ebay.com/itm/Electronic-auto-focus-macro-extension-tube-12mm-EF-12-DG-II-f-Canon-EOS-EF-EF-S-/200744974706?hash=item2ebd553972:g:TU4AAOxydkZRk4Fj
+
+AU Source offical Canon extender
+
+https://www.camera-warehouse.com.au/canon-extension-tube-ef-12
+
+Birger Engineering
+
+https://psv.birger.com/
+
+DIYer
+
+http://blueringlab.com/2016/02/canon-ef-lens-control-test/
+
