@@ -40,12 +40,10 @@ SPI.beginTransaction(SPISettings(SPI_CLOCK_DIV128,MSBFIRST,SPI_MODE3));
 
  
 delay(100);     
-RetVal=SPI.transfer(10);
-//send_signal(0x4F);    
+RetVal=SPI.transfer(10);   
 
 delay(100);     
 
-//send_signal(0x50);
 } 
 
 
@@ -87,14 +85,11 @@ Serial.println();
  {
 
 //focus to infinity
-  //    RetVal = SPI.transfer(7);
-  //    delay(10);
+      RetVal = SPI.transfer(7);
+      delay(30);
       RetVal = SPI.transfer(6);
-   //   delay(10);
       
-    //  RetVal = SPI.transfer(8);
-      
-      delay(1000);
+      delay(100);
 Serial.print(" ");        
 Serial.print(" FOCUS TO INFINITY");
  
@@ -104,15 +99,13 @@ void focus_2near()
  {
 
 //focus to near
+RetVal = SPI.transfer(7);
+delay(30);
+      RetVal = SPI.transfer(5);
+      delay(30);
+      RetVal = SPI.transfer(8);
 
-   //   RetVal = SPI.transfer(7);
-   //   delay(10);
-      RetVal = SPI.transfer(6);
-   //   delay(10);
-      
-    //  RetVal = SPI.transfer(-8);
-
-      delay(1000);
+      delay(100);
 Serial.print(" ");     
 Serial.print(" FOCUS TO NEAR");
  
