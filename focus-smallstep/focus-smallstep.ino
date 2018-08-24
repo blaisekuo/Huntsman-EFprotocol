@@ -1,7 +1,5 @@
 #include <SPI.h>
 
-//const int HotShoe_Pin = 8;
-//const int HotShoe_Gnd = 9;
 const int LogicVDD_Pin = 10;
 const int Cam2Lens_Pin = 11;
 const int Clock_Pin = 13; 
@@ -9,6 +7,10 @@ const int Clock_Pin = 13;
 int ByteReceived;
 
 int RetVal;
+
+int x,y,offset;
+
+int stepsize = 25;
  
 void setup() // initialization 
 {     
@@ -37,76 +39,98 @@ digitalWrite(Clock_Pin, HIGH);
 //SPI.setDataMode(SPI_MODE3);
 SPI.beginTransaction(SPISettings(SPI_CLOCK_DIV128,MSBFIRST,SPI_MODE3));
         
+InitLens();
 
- 
-delay(100);     
-RetVal=SPI.transfer(10);   
+}
 
-delay(100);     
-
-} 
-
+void InitLens()
+{
+  SPI.transfer(0x0A);
+  delay(50);
+  SPI.transfer(0x00);
+  delay(50);
+  SPI.transfer(0x0A);
+  delay(50);
+  SPI.transfer(0x00);
+  delay(50);
+}
 
 void loop() {     
 
   if (Serial.available() > 0)
   {
     ByteReceived = Serial.read();
-    Serial.print(ByteReceived);   
-    Serial.print("        ");      
-    Serial.print(ByteReceived, HEX);
-    Serial.print("       ");     
+    Serial.print("command sent: ");
     Serial.print(char(ByteReceived));
+    Serial.println();   
+    //Serial.print("        ");      
+    //Serial.print(ByteReceived, HEX);
+    //Serial.print("       ");     
+    //Serial.print(char(ByteReceived));
 
     
-if(ByteReceived == '1') // upon shutter release     
+if(ByteReceived == 'I') // upon shutter release     
 {         
 
-focus_2infinity();         
-
+      InitLens();
+      SPI.transfer(0x06);
+      Serial.print(" FOCUS TO INFINITY");
+      delay(50);
 }
+
+if(ByteReceived == 'Z') // upon shutter release     
+{         
+
+      InitLens();
+      SPI.transfer(0x05);
+      Serial.print(" FOCUS TO ZERO");
+      delay(50);
+} 
 
 if(ByteReceived == '0') // upon shutter release     
 {         
 
-focus_2near();         
+InitLens();
 
-} 
+      offset = stepsize;
+      x = highByte(offset);
+      y = lowByte(offset);
 
+      SPI.transfer(68);
+      delay(50);
+      SPI.transfer(x);
+      delay(50);
+      SPI.transfer(y);
+      delay(50);     
+      SPI.transfer(0);     
+      Serial.print(" MOVE LENS +50");
+      delay(50);      
+
+}
+
+if(ByteReceived == '1') // upon shutter release     
+{         
+
+InitLens();
+
+      offset = stepsize * (-1);
+      x = highByte(offset);
+      y = lowByte(offset);
+
+      SPI.transfer(68);
+      delay(50);
+      SPI.transfer(x);
+      delay(50);
+      SPI.transfer(y);
+      delay(50);     
+      SPI.transfer(0);     
+      Serial.print(" MOVE LENS -50");
+      delay(50);      
+
+}
 
 Serial.println();
 
 } 
 
 }
- 
-
- void focus_2infinity()
- {
-
-//focus to infinity
-      RetVal = SPI.transfer(7);
-      delay(30);
-      RetVal = SPI.transfer(6);
-      
-      delay(100);
-Serial.print(" ");        
-Serial.print(" FOCUS TO INFINITY");
- 
- }
-
-void focus_2near()
- {
-
-//focus to near
-RetVal = SPI.transfer(7);
-delay(30);
-      RetVal = SPI.transfer(5);
-      delay(30);
-      RetVal = SPI.transfer(8);
-
-      delay(100);
-Serial.print(" ");     
-Serial.print(" FOCUS TO NEAR");
- 
- }
