@@ -10,7 +10,7 @@ int RetVal;
 
 int x,y,offset;
 
-int stepsize = 25;
+int stepsize = 500;
  
 void setup() // initialization 
 {     
