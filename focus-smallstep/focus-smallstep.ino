@@ -81,8 +81,6 @@ void InitLens()
   //SPI.transfer(0x00);
   //delay(50);
 
-  delay(50);
-
 }
 
 void loop() {     
@@ -123,7 +121,7 @@ if(ByteReceived == 'Z') // upon shutter release
       delay(50);
 } 
 
-if(ByteReceived == '0') // upon shutter release     
+if(ByteReceived == '0') // small step on motor     
 {         
 
 InitLens();
@@ -139,12 +137,13 @@ InitLens();
       SPI.transfer(y);
       delay(50);     
       SPI.transfer(0);     
-      Serial.print(" MOVE LENS +50");
+      Serial.print(" MOVE LENS ");
+      Serial.print(offset);
       delay(50);      
 
 }
 
-if(ByteReceived == '1') // upon shutter release     
+if(ByteReceived == '1') //small step on motor     
 {         
 
 InitLens();
@@ -160,7 +159,8 @@ InitLens();
       SPI.transfer(y);
       delay(50);     
       SPI.transfer(0);     
-      Serial.print(" MOVE LENS -50");
+      Serial.print(" MOVE LENS ");
+      Serial.print(offset);
       delay(50);      
 
 }
